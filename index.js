@@ -126,7 +126,9 @@ app.post("/users/login", (req, res) => {
 
 // Criação do token para um usuário
 function criarToken(id, usuario, email) {
-    return jwt.sign({ idusuario: id, nomeusuario: usuario, email: email }, process.env.JWT_KEY, { expiresIn: process.env.JWT_EXPIRES });
+    return jwt.sign({ idusuario: id, nomeusuario: usuario, email: email }, process.env.JWT_KEY, {
+         expiresIn: process.env.JWT_EXPIRES,algorithm:"HS384" 
+        });
 }
 
 
