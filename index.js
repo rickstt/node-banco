@@ -18,6 +18,9 @@ foi criada uma constante de saltos que teve seu valor convertido para int.
 */
 const salt = parseInt(process.env.SALT);
 
+//Import do módulo Json Web Token para criptografia de sessão
+const jwt = require("jsonwebtoken");
+
 //Instância do express representada por app
 const app = express();
 
@@ -96,6 +99,36 @@ app.put("/users/update/:id", (req, res) => {
         else return res.status(500).send({ output: `Unexpected internal error in password`, erro: error });
     });
 });
+
+//Rota para realizar o login
+app.post("/users/login", (req, res) => {
+    con.query("SELECT * FROM usuario WHERE nomeusuario=?", [req.body.nomeusuario], (error, result) => {
+        if (!error) {
+            bcrypt.compare(req.body.senha, result[0].senha, (err, equals) => {
+                if (equals) {
+                    const token = criarToken(result[0].idusuario, result[0].nomeusuario, result[0].email);
+                    return res.status(200).send({ output: `Authenticated`, token: token });
+                }
+                else {
+                    return res.status(400).send({ output: `Username or Password incorrect` });
+                }
+            })
+        }
+        else if (!result) {
+            return res.status(400).send({ output: `Username or Password incorrect` });
+        }
+        else {
+            return res.status(500).send({ output: `Unexpected internal error in password`, erro: error });
+        }
+    })
+})
+
+
+// Criação do token para um usuário
+function criarToken(id, usuario, email) {
+    return jwt.sign({ idusuario: id, nomeusuario: usuario, email: email }, process.env.JWT_KEY, { expiresIn: process.env.JWT_EXPIRES });
+}
+
 
 //Vamos definir a porta de comunicação
 app.listen(process.env.PORT, () => console.log(
