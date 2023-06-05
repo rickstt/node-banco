@@ -21,11 +21,17 @@ const salt = parseInt(process.env.SALT);
 //Import do módulo Json Web Token para criptografia de sessão
 const jwt = require("jsonwebtoken");
 
+//Importação do módulo de cross-platform cors
+const cors = require("cors");
+
 //Instância do express representada por app
 const app = express();
 
 //Ativar a manipulação de dados em json
 app.use(express.json());
+
+//Adicionar o cors ao projeto
+app.use(cors());
 
 /* ----------------------- BANCO DE DADOS --------------------------
     Configurar a conexão com banco de dados MySQL passando:
@@ -84,7 +90,7 @@ app.post("/users/insert", (req, res) => {
 });
 
 //Criação da rota de atualização de dados
-app.put("/users/update/:id", (req, res) => {
+app.put("/users/update/:id", verificarToken,(req, res) => {
     let sh = req.body.senha;
 
     bcrypt.hash(sh, salt, (error, result) => {
@@ -127,10 +133,34 @@ app.post("/users/login", (req, res) => {
 // Criação do token para um usuário
 function criarToken(id, usuario, email) {
     return jwt.sign({ idusuario: id, nomeusuario: usuario, email: email }, process.env.JWT_KEY, {
-         expiresIn: process.env.JWT_EXPIRES,algorithm:"HS384" 
-        });
+        expiresIn: process.env.JWT_EXPIRES, algorithm: "HS384"
+    });
 }
 
+/*
+Verificar se o usuário tem um token válido, em caso positivo, 
+é sinal de que ele já fez login e portanto pode atualizar os dados 
+*/
+function verificarToken(req, res, next) {
+    const token_enviado = req.headers.token;
+
+    if (!token_enviado)
+        return res.status(401).send({ output: `Access Denied` });
+
+    jwt.verify(token_enviado, process.env.JWT_KEY, (error, result) => {
+        if (error) {
+            return res.status(500).send({ output: `Internal Error to verify token` });
+        }
+        else {
+            req.content = {
+                idusuario: result.idusuario,
+                nomeusuario: result.nomeusuario,
+                email: result.email
+            }
+            next();
+        }
+    })
+}
 
 //Vamos definir a porta de comunicação
 app.listen(process.env.PORT, () => console.log(
